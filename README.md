@@ -39,10 +39,37 @@ class Transformer(nn.Module):
         x = self.transformer(x)
         return self.head(self.layer_norm(x))
 ```
-
+As suggested in literature we use the weighted ELBO loss on the 1024-class (token) classification 
 
 
 ## Synthetic paired 3D data generation (sampling)
+After training the diffusion model, new synthetic paired 3D data can be generated as forward sampling using the following function:
+```
+num_timesteps = 256
+def synthesise_fn(denoise_fn,temp=.9):
+        #create tensor with only masked entries
+        x_t = torch.ones(2,16*13*16).cuda().long()*mask_id
+        #create an empty tensor to store masked/unmasked elements
+        unmasked = torch.zeros_like(x_t).bool() 
+        for t_iter in trange(num_timesteps):
+            # define random change (gradually increase the number of unmasked elements)
+            t1 = torch.ones(2,16*13*16).cuda() / float(num_timesteps-t_iter)
+            # create and apply random mask
+            change_mask = torch.rand_like(x_t.float()) < t1
+            # don't unmask somewhere already unmasked
+            change_mask = torch.bitwise_xor(change_mask, torch.bitwise_and(change_mask, unmasked))
+            # predict logits with denoiser (and scale by tempature)
+            x_0_logits = denoise_fn(x_t)/temp
+            # instead of taking a "hard" argmax the probabilities of the logits should be used 
+            # to softly sample the best elements for the required change positions
+            x_0_dist = distributions.Categorical(logits=x_0_logits)
+            x_0_hat = x_0_dist.sample().long()
+            # finally insert predicted tokens where change was required and update mask
+            x_t[change_mask] = x_0_hat[change_mask]
+            unmasked = torch.bitwise_or(unmasked, change_mask)
+        return x_t
+```
+
 
 ## Training and evaluation of two-step inverse consistent registration
 This registration network is inspired by Hasting Greer's "Inverse Consistency by Construction" MICCAI 2023 https://doi.org/10.1007/978-3-031-43999-5_65 (own implementation)
