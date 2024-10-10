@@ -78,4 +78,4 @@ The generation of two paired 3D highresolution volumes (2x2x256x208x256) within 
 This registration network is inspired by Hasting Greer's "Inverse Consistency by Construction" MICCAI 2023 https://doi.org/10.1007/978-3-031-43999-5_65 (own implementation)
 
 ## Provided models
-We uploaded all our trained models so that a replication of individual steps is possible. 
+We uploaded all our trained models so that a replication of individual steps is possible. (Link coming soon)
